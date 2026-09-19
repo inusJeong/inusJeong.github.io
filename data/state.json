@@ -1,6 +1,7 @@
 {
- "term_cursor": 12,
- "last_sent": "2026-09-19",
+ "term_cursor": 16,
+ "word_day": 1,
+ "last_sent": "2026-09-20",
  "history": [
   {
    "date": "2026-09-19",
@@ -15,6 +16,23 @@
     "[과기원NOW] KAIST, 대장균으로 만드는 '접착제 소재' 外",
     "[책과 삶]누가 봐도 성공했는데···\"가난하게 컸어?\" 질문에 쫓기는 ‘계급횡단자’의 불안",
     "[책과 삶]리더가 역사를 만드나 역사가 리더를 만드나"
+   ]
+  },
+  {
+   "date": "2026-09-20",
+   "titles": [
+    "Interos Deepens AI-Driven Supply Chain Risk Capabilities With New Case Studies and Predictive Tools",
+    "When the River Runs Dry: How Drought Became the Supply Chain Risk No One Planned For",
+    "3 US Stocks Tied To Nearshoring As Tariffs Reshape Retail Supply Chains",
+    "“AI가 신입 대체한다더니”…롯데·신세계·CJ, 채용 문 활짝",
+    "취준생 몰리던 '네카오'…공채 멈추고 취업문 좁아지나",
+    "US and Denmark reach security deal after Trump’s threats to take over Greenland",
+    "“사우디 수도 공습 경보 후 폭발음”···후티 반군 공세 강화",
+    "피지, HIV 급속 확산에 '국가비상사태'…성인 60명 중 1명 감염",
+    "韓 연구팀 개발한 그래핀 섬유 원천 기술, 칫솔부터 항공우주 소재까지",
+    "‘냄새’도 전시하는 박물관…되살리고 읽어내는 기술",
+    "“남의 프롬프트 쓰지 마라”...AI 경쟁력, 기술 성능이 아니라 물음의 깊이에서 갈린다",
+    "[책과 삶]어차피 망할 유토피아? 실패해도 희망을 남긴다"
    ]
   }
  ]
