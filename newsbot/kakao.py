@@ -29,8 +29,9 @@ def _client_params() -> dict:
     return params
 
 
-def access_token() -> str:
-    refresh = env("KAKAO_REFRESH_TOKEN")
+def access_token(refresh: str = "") -> tuple[str, str]:
+    """(액세스 토큰, 새 refresh token 또는 빈 문자열). 인자가 없으면 .env의 내 토큰을 쓴다."""
+    refresh = refresh or env("KAKAO_REFRESH_TOKEN")
     if not env("KAKAO_REST_API_KEY") or not refresh:
         raise RuntimeError("KAKAO_REST_API_KEY / KAKAO_REFRESH_TOKEN 이 설정되지 않았습니다")
     resp = requests.post(TOKEN_URL, data={"grant_type": "refresh_token", "refresh_token": refresh,
@@ -39,19 +40,28 @@ def access_token() -> str:
         raise RuntimeError(f"카카오 토큰 갱신 실패 ({resp.status_code}): {resp.text[:200]}\n"
                            f"→ refresh token이 만료됐다면 `python -m newsbot kakao-auth`로 다시 발급하세요")
     data = resp.json()
-    if data.get("refresh_token"):          # 만료가 가까워 새 refresh token이 발급됨
+    new_refresh = data.get("refresh_token", "")   # 만료가 가까우면 새 토큰을 함께 준다
+    if new_refresh and not refresh_given(refresh):
         OUT.mkdir(exist_ok=True)
-        (OUT / "new_refresh_token").write_text(data["refresh_token"], encoding="utf-8")
-    return data["access_token"]
+        (OUT / "new_refresh_token").write_text(new_refresh, encoding="utf-8")
+    return data["access_token"], new_refresh
 
 
-def send_text(text: str, url: str, button_title: str) -> None:
+def refresh_given(refresh: str) -> bool:
+    """사용자별 토큰으로 호출된 경우인지 (내 .env 토큰이면 파일로 저장해 Actions가 교체한다)."""
+    return refresh != env("KAKAO_REFRESH_TOKEN")
+
+
+def send_text(text: str, url: str, button_title: str, refresh: str = "") -> str:
+    """보내고, 새 refresh token이 발급됐으면 돌려준다 (호출한 쪽이 저장)."""
+    token, new_refresh = access_token(refresh)
     template = {"object_type": "text", "text": text,
                 "link": {"web_url": url, "mobile_web_url": url}, "button_title": button_title}
-    resp = requests.post(SEND_URL, headers={"Authorization": f"Bearer {access_token()}"},
+    resp = requests.post(SEND_URL, headers={"Authorization": f"Bearer {token}"},
                          data={"template_object": json.dumps(template, ensure_ascii=False)}, timeout=15)
     if resp.status_code != 200 or resp.json().get("result_code") != 0:
         raise RuntimeError(f"카카오톡 발송 실패 ({resp.status_code}): {resp.text[:200]}")
+    return new_refresh
 
 
 def authorize() -> None:

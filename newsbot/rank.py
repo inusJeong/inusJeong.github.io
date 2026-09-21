@@ -41,9 +41,11 @@ def freshness(cluster: Cluster, now: datetime) -> float:
     return max(0.0, 1.5 - hours / 16)       # 방금=1.5, 24시간 전=0
 
 
-def shortlist(clusters: list[Cluster], cfg: dict, now: datetime,
-              recent_titles: list[str]) -> dict[str, list[Cluster]]:
-    interests = [(keyword_pattern(k), w) for k, w in cfg["profile"]["interests"].items()]
+def shortlist(clusters: list[Cluster], cfg: dict, now: datetime, recent_titles: list[str],
+              interests_map: dict[str, float] | None = None,
+              only: list[str] | None = None) -> dict[str, list[Cluster]]:
+    """interests_map / only 를 주면 그 사용자 기준으로 후보를 고른다 (없으면 config 기본값)."""
+    interests = [(keyword_pattern(k), w) for k, w in (interests_map or cfg["profile"]["interests"]).items()]
     size = cfg["report"]["shortlist_per_category"]
     weights = {c["id"]: c["weights"] for c in cfg["categories"]}
     # 관련도 = 내 관심사 + 그 카테고리다운 주제인가 (인문 카테고리에선 '철학·역사'가 가산)
@@ -64,6 +66,8 @@ def shortlist(clusters: list[Cluster], cfg: dict, now: datetime,
 
     result: dict[str, list[Cluster]] = {}
     for cat in cfg["categories"]:
+        if only is not None and cat["id"] not in only:
+            continue
         pool = [c for c in clusters if c.category == cat["id"] and c.score > 0]
         pool.sort(key=lambda c: c.score, reverse=True)
         result[cat["id"]] = pool[:size]

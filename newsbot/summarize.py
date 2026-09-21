@@ -41,6 +41,17 @@ SYSTEM = """당신은 한 사람만을 위한 아침 뉴스 브리핑 에디터�
 - 원문 문장을 인용하지 말고 자신의 말로 요약합니다."""
 
 
+RETRY_ELSEWHERE = {429, 500, 503}   # 다른 모델로 넘어가 볼 만한 오류
+
+
+def model_chain(cfg: dict) -> list[str]:
+    """기본 모델 → 예비 모델 순서. 한도 초과·과부하 때 차례로 시도한다."""
+    chain = [cfg["llm"]["model"]]
+    if cfg["llm"].get("fallback_model"):
+        chain.append(cfg["llm"]["fallback_model"])
+    return chain
+
+
 # 카테고리에 why가 없을 때: 전공에 억지로 연결하지 않는 교양 관점
 DEFAULT_WHY = ("세상을 이해하는 데 왜 알아둘 만한지(배경, 파장, 논쟁점). "
                "독자의 전공(SCM·산업공학)에 억지로 연결하지 않는다.")
@@ -76,12 +87,12 @@ def _candidate_text(i: int, cl: Cluster, tz) -> str:
 
 def summarize_category(client: genai.Client, cfg: dict, cat: dict, clusters: list[Cluster]) -> list[Story]:
     """기본 모델의 무료 한도(하루 호출 수)가 차면 한도가 따로인 예비 모델로 한 번 더 시도한다."""
-    models = [cfg["llm"]["model"]] + ([cfg["llm"]["fallback_model"]] if cfg["llm"].get("fallback_model") else [])
-    for i, model in enumerate(models):
+    for i, model in enumerate(model_chain(cfg)):
         try:
             return _summarize_with(client, model, cfg, cat, clusters)
-        except genai_errors.ClientError as exc:
-            if exc.code != 429 or i == len(models) - 1:
+        except genai_errors.APIError as exc:
+            # 429 한도 초과, 503 과부하 → 예비 모델로 한 번 더
+            if exc.code not in RETRY_ELSEWHERE or i == len(model_chain(cfg)) - 1:
                 raise
 
 
@@ -130,7 +141,7 @@ def summarize(cfg: dict, shortlists: dict[str, list[Cluster]]) -> tuple[dict[str
 
     # 무료 등급은 분당 호출 수 제한이 있어 429(한도 초과)·5xx는 기다렸다가 재시도
     client = genai.Client(api_key=env("GEMINI_API_KEY"), http_options=types.HttpOptions(
-        retry_options=types.HttpRetryOptions(attempts=3, initial_delay=10, max_delay=60,
+        retry_options=types.HttpRetryOptions(attempts=4, initial_delay=8, max_delay=45,
                                              http_status_codes=[429, 500, 502, 503, 504])))
 
     def run(cat):
@@ -143,3 +154,135 @@ def summarize(cfg: dict, shortlists: dict[str, list[Cluster]]) -> tuple[dict[str
     with ThreadPoolExecutor(max_workers=2) as pool:   # 무료 한도를 고려해 동시 2개만
         results = dict(pool.map(run, cats))
     return results, errors
+
+
+# ── 여러 사용자용: 1인당 1회 호출로 전체 리포트 요약 ──────────────
+
+PERSONAS = {
+    "jobseeker": "취업을 준비 중입니다. 지원 직무·기업 준비, 면접에서 쓸 수 있는 관점으로 연결하세요.",
+    "worker": "현업에서 일하고 있습니다. 실무 판단과 업무에 어떤 의미인지로 연결하세요.",
+    "student": "학생입니다. 전공 수업에서 배우는 개념의 실제 사례로 연결하세요.",
+}
+
+SYSTEM_USER = """당신은 한 사람만을 위한 아침 뉴스 브리핑 에디터입니다.
+
+독자
+- 전공·관심 분야: {major}
+- 상황: {persona}
+- 관심 키워드: {keywords}
+
+할 일: 카테고리별 후보 이슈 목록을 받아, 카테고리마다 정해진 개수 이내로 이슈를 고르고 구조화 요약을 씁니다.
+
+고르는 기준
+- 실질적인 정보가 있는 뉴스를 고릅니다. 보도자료성 행사 소식, 단순 수상·협약·홍보, 광고성 기사는 고르지 않습니다.
+- 여러 매체가 다룬 이슈는 무게가 있다는 신호지만, 홍보 기사가 여러 곳에 뿌려진 경우와 구별하세요.
+- 같은 사건을 다루는 후보는 카테고리가 달라도 하나만 고릅니다.
+- 가치 있는 후보가 정해진 개수보다 적으면 적게 고르세요. 억지로 채우지 않습니다.
+
+쓰는 규칙 (모두 한국어, 영어 기사도 한국어로)
+- category: 그 후보가 속한 카테고리 id를 그대로 적습니다.
+- headline: 사건의 핵심을 담은 제목, 40자 이내. 원문 제목을 그대로 베끼지 말고 새로 씁니다.
+- short: 카카오톡 미리보기용 초압축 제목, 18자 이내.
+- what: 무슨 일이 있었는지 한 문장, "~했다" 체.
+- points: 핵심 포인트 2~3개. 각 50자 이내의 명사형 종결("~함", "~음", "~ 전망")로 통일. 숫자·고유명사·원인과 결과를 담습니다.
+- why: 한두 문장, 100자 이내. 반드시 "~다"로 끝나는 평서문("~입니다" 금지). 각 카테고리에 적힌 관점을 따릅니다.
+  "중요하다", "주목할 만하다" 같은 일반론은 쓰지 않습니다.
+- 주어진 텍스트에 있는 사실만 씁니다. 추측으로 수치나 사실을 만들지 않습니다.
+- 원문 문장을 인용하지 말고 자신의 말로 요약합니다."""
+
+
+class UserPick(Pick):
+    category: str = Field(description="후보가 속한 카테고리 id")
+
+
+class UserPicks(BaseModel):
+    picks: list[UserPick]
+
+
+def why_for(cat: dict, user) -> str:
+    """'왜 중요한가' 관점. 전공·취업은 그 사용자의 전공을 기준으로 바꾼다
+    (config.yaml의 문구는 운영자 본인 기준이라 그대로 쓰면 안 된다)."""
+    major = user.major.strip()
+    if cat["id"] == "major":
+        return (f"이 뉴스가 독자의 전공·관심 분야({major})에서 배우는 개념의 실제 사례인지, "
+                f"또는 그 분야 실무에서 어떤 판단으로 이어지는지." if major else DEFAULT_WHY)
+    if cat["id"] == "jobs":
+        field = f"{major} 분야 " if major else ""
+        return f"{field}지원자의 취업 준비에 어떤 의미인지(지원할 만한 직무·일정, 채용 시장 흐름의 시사점)."
+    return cat.get("why", DEFAULT_WHY).strip()
+
+
+def summarize_user(cfg: dict, shortlists: dict[str, list[Cluster]], user) -> tuple[list[Story], str]:
+    """사용자 1명의 리포트를 한 번의 호출로 요약한다. 실패하면 (제목만 목록, 오류 메시지)."""
+    cats = {c["id"]: c for c in cfg["categories"] if shortlists.get(c["id"])}
+    flat: list[tuple[str, Cluster]] = []
+    blocks = []
+    for cid, cat in cats.items():
+        lines = [f"== 카테고리 {cid} · {cat['name']} (최대 {cat['pick']}개)",
+                 f"   '왜 중요한가' 관점: {why_for(cat, user)}"]
+        for cl in shortlists[cid]:
+            flat.append((cid, cl))
+            lines.append(_candidate_text(len(flat), cl, cfg["tz"]))
+        blocks.append("\n\n".join(lines))
+
+    if not flat:
+        return [], "후보 기사가 없습니다"
+
+    major = user.major or "특별히 정해진 전공 없음"
+    system = SYSTEM_USER.format(major=major, persona=PERSONAS.get(user.persona, PERSONAS["jobseeker"]),
+                                keywords=", ".join(user.keywords) or "없음")
+
+    def fallback_stories() -> list[Story]:
+        out = []
+        for cid, cat in cats.items():
+            out.extend(fallback(cat, shortlists[cid]))
+        return out
+
+    if not env("GEMINI_API_KEY"):
+        return fallback_stories(), "GEMINI_API_KEY 없음"
+
+    client = genai.Client(api_key=env("GEMINI_API_KEY"), http_options=types.HttpOptions(
+        retry_options=types.HttpRetryOptions(attempts=4, initial_delay=8, max_delay=45,
+                                             http_status_codes=[429, 500, 502, 503, 504])))
+    models = model_chain(cfg)
+    last_error = ""
+    for i, model in enumerate(models):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents="후보 이슈:\n\n" + "\n\n".join(blocks),
+                config=types.GenerateContentConfig(
+                    system_instruction=system,
+                    response_mime_type="application/json",
+                    response_schema=UserPicks,
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                ),
+            )
+            parsed = response.parsed
+            if not isinstance(parsed, UserPicks):
+                raise RuntimeError(f"응답 형식 오류 ({response.candidates[0].finish_reason if response.candidates else '응답 없음'})")
+
+            stories, used, per_cat = [], set(), {}
+            for p in parsed.picks:
+                if not 1 <= p.candidate <= len(flat):
+                    continue
+                cid, cl = flat[p.candidate - 1]
+                limit = cats[cid]["pick"]
+                if cl.id in used or per_cat.get(cid, 0) >= limit:
+                    continue
+                used.add(cl.id)
+                per_cat[cid] = per_cat.get(cid, 0) + 1
+                stories.append(Story(category=cid, headline=p.headline, short=p.short, what=p.what,
+                                     points=p.points[:3], why=p.why, url=cl.lead.url, sources=cl.sources,
+                                     lead_title=cl.lead.title))
+            if not stories:
+                raise RuntimeError("고른 이슈가 없습니다")
+            return stories, ""
+        except genai_errors.APIError as exc:
+            last_error = str(exc)[:120]
+            if exc.code not in RETRY_ELSEWHERE or i == len(models) - 1:
+                break
+        except Exception as exc:
+            last_error = str(exc)[:120]
+            break
+    return fallback_stories(), last_error

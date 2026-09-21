@@ -3,6 +3,7 @@
   python -m newsbot run          만들고 + 카톡 발송
   python -m newsbot build        만들기만 (GitHub Actions 1단계)
   python -m newsbot send         만든 리포트를 카톡 발송 (GitHub Actions 2단계, 페이지 배포 후)
+  python -m newsbot run-users    구독자 전원에게 발송 (여러 사용자 모드)
   python -m newsbot check        뉴스 소스·API 키 점검
   python -m newsbot kakao-auth   카카오 refresh token 최초 발급
   python -m newsbot kakao-test   카톡 발송 테스트 (상태 기록 안 함)
@@ -150,6 +151,9 @@ def main() -> None:
         build(cfg, force)
     elif cmd == "send":
         send(cfg)
+    elif cmd == "run-users":
+        from .multi import run_all
+        run_all(cfg, force)
     elif cmd == "run":
         if build(cfg, force):
             send(cfg)
