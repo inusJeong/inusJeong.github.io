@@ -1,22 +1,17 @@
-# 매일 아침: 리포트 생성 → 웹페이지 배포 → 카톡 발송 → 상태 저장
-# 순서가 중요한 이유: 카톡 버튼이 여는 페이지가 먼저 배포돼 있어야 하고,
-#                    상태(용어 순번·보낸 이슈)는 발송이 성공했을 때만 전진해야 한다.
+# 매일 아침: 구독자 전원에게 맞춤 리포트를 만들어 카카오톡으로 발송
+#   수집·묶기·본문 보강은 전체 1회, 고르기·요약·발송은 사람마다 (newsbot/multi.py)
+#   리포트 페이지는 Vercel(SITE_URL)에서 열리므로 여기서 배포할 것은 없다
 name: daily-report
 
 on:
   schedule:
     - cron: "30 21 * * *"   # 매일 06:30 KST (GitHub 스케줄은 10~30분 늦게 시작되는 경우가 많음)
-  workflow_dispatch:         # Actions 탭의 "Run workflow" 버튼으로 수동 실행
+  workflow_dispatch:
     inputs:
       force:
-        description: "오늘 이미 보냈어도 다시 만들고 보내기"
+        description: "오늘 이미 보낸 사람에게도 다시 보내기"
         type: boolean
         default: false
-
-permissions:
-  contents: write   # 아카이브·상태 커밋
-  pages: write      # GitHub Pages 배포
-  id-token: write
 
 concurrency:
   group: daily-report
@@ -25,16 +20,15 @@ concurrency:
 jobs:
   report:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
       NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
       KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
       KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
-      KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      SITE_URL: ${{ secrets.SITE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,45 +39,5 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: 1~6 수집·요약·조립
-        id: build
-        run: python -m newsbot build ${{ inputs.force && '--force' || '' }}
-
-      - name: 웹 리포트 배포 (GitHub Pages)
-        if: steps.build.outputs.skip == 'false'
-        uses: actions/configure-pages@v5
-      - if: steps.build.outputs.skip == 'false'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-      - id: deploy
-        if: steps.build.outputs.skip == 'false'
-        uses: actions/deploy-pages@v4
-
-      - name: 7 카카오톡 발송
-        if: steps.build.outputs.skip == 'false'
-        env:
-          REPORT_BASE_URL: ${{ vars.REPORT_BASE_URL || steps.deploy.outputs.page_url }}
-        run: python -m newsbot send
-
-      - name: 카카오 refresh token 자동 교체
-        if: always() && hashFiles('out/new_refresh_token') != ''
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          if [ -n "$GH_TOKEN" ]; then
-            gh secret set KAKAO_REFRESH_TOKEN --repo "$GITHUB_REPOSITORY" < out/new_refresh_token
-            echo "refresh token 교체 완료"
-          else
-            echo "::warning::카카오 refresh token이 곧 만료됩니다. GH_PAT Secret을 등록하거나 kakao-auth로 재발급하세요."
-          fi
-
-      - name: 아카이브·상태 저장
-        if: always() && steps.build.outputs.skip == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs data/state.json
-          git diff --cached --quiet || git commit -m "report: $(TZ=Asia/Seoul date +%F)"
-          git pull --rebase -X theirs origin main
-          git push
+      - name: 구독자 전원 발송
+        run: python -m newsbot run-users ${{ inputs.force && '--force' || '' }}
