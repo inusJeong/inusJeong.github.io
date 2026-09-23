@@ -5,7 +5,7 @@ name: daily-report
 
 on:
   schedule:
-    - cron: "30 21 * * *"   # 매일 06:30 KST (GitHub 스케줄은 10~30분 늦게 시작되는 경우가 많음)
+        - cron: "07 19 * * *"   # 매일 04:07 KST 예약 (실제로는 2~3시간 밀려 06~07시 도착)
   workflow_dispatch:
     inputs:
       force:
