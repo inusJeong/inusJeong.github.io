@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="NQIS Vision Intelligence: 원단 검사 UI 시뮬레이션 (실제 AI 추론 전)">
+<title>NQIS Vision Intelligence | Fabric Inspection</title>
+<style>
+:root{color-scheme:dark;--bg:#08111c;--panel:#111f30;--panel2:#14283b;--border:#294155;--muted:#96adbf;--text:#e9f4fa;--teal:#62e3d2;--orange:#ffc074;--danger:#ff8594}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}button,input{font:inherit}button{cursor:pointer}.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+aside{background:#0c1927;border-right:1px solid var(--border);padding:29px 18px}.logo{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:850;letter-spacing:.02em}.logo i{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;font-style:normal;background:var(--teal);color:#08242b}.subtitle{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:4px 0 38px 48px}.nav{padding:10px 13px;color:var(--muted);border-radius:11px;margin:4px 0}.nav.current{background:#173848;color:#b1fff0;font-weight:700}.aside-footer{font-size:12px;color:var(--muted);margin-top:45vh;border-top:1px solid var(--border);padding-top:18px}
+main{padding:32px min(4vw,56px);max-width:1600px;width:100%;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--teal);font-weight:800}h1{font-size:clamp(26px,3vw,42px);letter-spacing:-.04em;line-height:1.12;margin:8px 0}p.lead{margin:9px 0 0;color:var(--muted)}.mode{border:1px solid #6c532d;background:#2a241c;padding:10px 14px;border-radius:10px;color:#ffe0a5;font-size:12px;font-weight:700}.banner{border:1px solid #295a60;border-radius:12px;padding:12px 17px;color:#cbeae7;background:#102d34;margin:26px 0}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.metric,.card{background:linear-gradient(135deg,#142437 0%,#0f1d2c 100%);border:1px solid var(--border);border-radius:16px}.metric{padding:18px 20px}.metric small{display:block;color:var(--muted);font-size:12px}.metric strong{font-size:25px;display:block;letter-spacing:-.04em;margin:7px 0 2px}.metric span{color:var(--teal);font-size:11px}.content{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,1fr);gap:18px}.card{padding:22px;margin-bottom:18px}.section-h{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}.section-h h2{margin:0;font-size:17px}.hint{color:var(--muted);font-size:12px}.swatch{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--teal);margin-right:5px}.preview{position:relative;background:#0b1019;border:1px solid #334b59;border-radius:12px;overflow:hidden}canvas{display:block;width:100%;height:auto;aspect-ratio:4/1}.overlay-label{position:absolute;left:12px;top:12px;background:#05121bd4;padding:5px 8px;border-radius:7px;font-size:11px;color:#c8edec}.preview-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:12px}.btn-row{display:flex;gap:8px;flex-wrap:wrap}.btn,.option{border:1px solid #376174;background:#153142;color:#ddf9f4;border-radius:9px;padding:9px 13px;font-size:13px}.btn:hover,.option:hover{border-color:var(--teal)}.option.selected{background:#21525c;border-color:var(--teal);color:white}.selectors{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 17px}.label{display:block;color:var(--muted);font-size:12px;font-weight:750;margin-bottom:7px}.range-row{display:flex;align-items:center;gap:16px}input[type=range]{width:100%;accent-color:var(--teal)}.threshold-value{font-weight:800;font-size:24px;color:var(--teal);min-width:70px;text-align:right}.grade{border-top:1px solid var(--border);margin-top:22px;padding-top:18px}.grade-top{display:flex;justify-content:space-between;gap:8px;align-items:center}.grade strong{font-size:27px;letter-spacing:-.02em}.grade-sub{color:var(--muted);font-size:12px;margin-top:3px}.status{padding:6px 12px;border-radius:8px;background:#203d43;color:#9dfff0;font-size:12px;font-weight:800}.status.review{background:#55432a;color:#ffdd9c}.status.suspect{background:#54313d;color:#ffadba}.score-bar{background:#0c1c29;border-radius:20px;height:9px;overflow:hidden;margin-top:18px}.score-fill{height:100%;width:0%;background:linear-gradient(90deg,#65d4c5,#f2c074,#ff7289);transition:width .25s}.row{display:flex;justify-content:space-between;gap:8px;padding:12px 0;border-bottom:1px solid #2a4050;font-size:13px}.row:last-child{border:0}.row span{color:var(--muted)}.row strong{font-weight:700}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:12px 8px;text-align:left;border-bottom:1px solid #263b4b}th{color:var(--muted);font-weight:500}td:last-child{text-align:right}.foot{margin:24px 0 12px;color:var(--muted);font-size:12px}.upload{display:none}.tool-message{min-height:35px;margin:12px 0 0;color:#ffd798;font-size:12px}
+@media(max-width:980px){.app{display:block}aside{display:none}.content{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){main{padding:20px 14px}.grid{gap:8px}.metric{padding:12px}.metric strong{font-size:20px}.card{padding:15px}.banner{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside><div class="logo"><i>N</i> NQIS</div><div class="subtitle">VISION INTELLIGENCE</div><div class="nav current">◉ &nbsp; Fabric Inspection</div><div class="nav">◌ &nbsp; Quality Analytics (예정)</div><div class="nav">◌ &nbsp; Model Evaluation (예정)</div><div class="nav">◌ &nbsp; Inspection History (예정)</div><div class="aside-footer">Factory Intelligence<br>Public demo · no production data</div></aside>
+<main>
+<div class="top"><div><div class="eyebrow">NQIS / RESEARCH PROTOTYPE</div><h1>Fabric Inspection Lab</h1><p class="lead">원단 품질검사 · 결함 영역 시각화 · 판정 임계값 실험</p></div><div class="mode">● SIMULATION / AI 서버 미연결</div></div>
+<div class="banner"><strong>시연 환경 안내:</strong> 현재 화면은 합성 원단 패턴과 미리 정한 예시 이상점수로 동작합니다. 실제 모델 추론·정확도·현장 성능을 보여주는 화면이 아닙니다.</div>
+<div class="grid">
+<div class="metric"><small>시연 검사 건수</small><strong id="mCount">4</strong><span>가상 샘플</span></div>
+<div class="metric"><small>원단 종류</small><strong>01</strong><span>합성 데모 패턴</span></div>
+<div class="metric"><small>현재 이상점수</small><strong id="mScore">0.86</strong><span>시연용 설정값</span></div>
+<div class="metric"><small>판정 기준</small><strong id="mThreshold">0.50</strong><span>사용자 조정 가능</span></div>
+</div>
+<div class="content">
+<div>
+<section class="card">
+<div class="section-h"><h2>원단 검사 뷰어</h2><span class="hint"><span class="swatch"></span>합성 이미지 · 1024 × 256</span></div>
+<div class="preview"><canvas id="fabric" width="1024" height="256" role="img" aria-label="합성 원단 시뮬레이션 이미지"></canvas><span id="previewLabel" class="overlay-label">Synthetic fabric / Sample 02</span></div>
+<div class="preview-footer"><span id="coord">가상 결함 위치: X 618 · Y 126</span><div class="btn-row"><button class="btn" id="heat">히트맵 표시/숨기기</button><label class="btn" for="upload">내 이미지 미리보기</label><input class="upload" type="file" id="upload" accept="image/png,image/jpeg,image/webp"></div></div>
+<div class="tool-message" id="message" role="status"></div>
+</section>
+<section class="card"><div class="section-h"><h2>검사 사례 선택</h2><span class="hint">원본 데이터가 아닌 예시</span></div>
+<div class="selectors"><button class="option" data-sample="normal">01 · 정상 예시</button><button class="option selected" data-sample="thread">02 · 실 끊어짐</button><button class="option" data-sample="stain">03 · 오염</button><button class="option" data-sample="knot">04 · 매듭</button></div>
+<table><thead><tr><th>샘플</th><th>시연 이상점수</th><th>특징</th><th>판정</th></tr></thead><tbody id="tableRows"></tbody></table>
+</section>
+</div>
+<div>
+<section class="card"><div class="section-h"><h2>Threshold 실험실</h2><span class="hint">데모 조절기</span></div>
+<label class="label" for="threshold">판정 임계값 · 0.05 ~ 0.95</label><div class="range-row"><input id="threshold" type="range" min="5" max="95" value="50" step="1"><span class="threshold-value" id="thresholdOut">0.50</span></div>
+<div class="hint" style="margin-top:11px">시연 정책: 임계값 ± 0.08 구간은 재검사, 그 이상은 불량 의심으로 표시합니다. 실제 기준은 검증 데이터로 최적화해야 합니다.</div>
+<div class="grade"><div class="grade-top"><strong id="gradeText">불량 의심</strong><span id="status" class="status suspect">SUSPECT</span></div><div class="grade-sub">작업자 최종 판정 필요 · 실제 검사 아님</div><div class="score-bar"><div id="scoreFill" class="score-fill"></div></div></div>
+</section>
+<section class="card"><div class="section-h"><h2>검사 상세 정보</h2><span class="hint">SYNTHETIC</span></div>
+<div class="row"><span>검사 방식</span><strong>시뮬레이션</strong></div><div class="row"><span>원본 이미지</span><strong id="sourceInfo">합성 원단</strong></div><div class="row"><span>AI 모델 상태</span><strong>추론 서버 미연결</strong></div><div class="row"><span>임계값 실험</span><strong>브라우저 전용</strong></div><div class="row"><span>원단 결함 유형</span><strong id="type">실 끊어짐 (예시)</strong></div>
+</section>
+<section class="card"><div class="section-h"><h2>다음 개발 연결</h2></div><p class="hint" style="margin:0">실제 분석을 위해서는 공개 원단 데이터 평가를 통과한 모델을 API로 연결해야 합니다. 현재 웹에 실제 결함 판정·파일 전송·검사 데이터 저장 기능은 연결되어 있지 않습니다.</p></section>
+</div></div><div class="foot">© NQIS Vision Intelligence · Prototype UI · No real plant data · Demonstration only</div>
+</main></div>
+<script>
+const samples={normal:{label:"정상 원단",score:.12,x:0,y:0,feature:"이상 없음"},thread:{label:"실 끊어짐",score:.86,x:618,y:126,feature:"가로 결함"},stain:{label:"오염",score:.74,x:418,y:135,feature:"국부 색상 변화"},knot:{label:"매듭",score:.63,x:744,y:113,feature:"밀집 패턴"}};
+let selected="thread",showHeat=true,uploaded=null;
+const $=id=>document.getElementById(id),cnv=$("fabric"),ctx=cnv.getContext("2d");
+function noise(x,y){let v=Math.sin(x*127.1+y*311.7)*43758.5453;return v-Math.floor(v)}
+function drawFabric(){const s=samples[selected],w=1024,h=256; if(uploaded){ctx.fillStyle="#101d29";ctx.fillRect(0,0,w,h);const scale=Math.min(w/uploaded.width,h/uploaded.height);const iw=uploaded.width*scale,ih=uploaded.height*scale;ctx.drawImage(uploaded,(w-iw)/2,(h-ih)/2,iw,ih);return;}
+const img=ctx.createImageData(w,h),d=img.data;
+for(let y=0;y<h;y++){for(let x=0;x<w;x++){let z=(y*w+x)*4;let grain=noise(Math.floor(x/3),Math.floor(y/3));let weave=(x%7<2?13:0)+(y%7<2?13:0);let shade=grain*8+weave;let r=86+shade,g=112+shade,b=129+shade;
+if(selected==="thread"&&Math.abs(y-(s.y+9*Math.sin((x-s.x)/45)))<3&&Math.abs(x-s.x)<124){r=188;g=194;b=184}
+if(selected==="stain"){let q=((x-s.x)/83)**2+((y-s.y)/53)**2;if(q<1){r+=Math.floor(54*(1-q));g-=Math.floor(42*(1-q));b-=Math.floor(54*(1-q))}}
+if(selected==="knot"){let q=((x-s.x)/45)**2+((y-s.y)/27)**2;if(q<1){r+=Math.floor(44*(1-q));g+=Math.floor(19*(1-q));b-=Math.floor(33*(1-q))}}
+d[z]=r;d[z+1]=g;d[z+2]=b;d[z+3]=255}}
+ctx.putImageData(img,0,0);
+if(showHeat&&selected!=="normal"){const {x,y}=s,rx=selected==="thread"?150:90,ry=selected==="thread"?27:65;const grd=ctx.createRadialGradient(x,y,4,x,y,rx);grd.addColorStop(0,"rgba(255,84,97,.52)");grd.addColorStop(.32,"rgba(255,158,80,.32)");grd.addColorStop(1,"rgba(255,149,64,0)");ctx.save();ctx.fillStyle=grd;ctx.fillRect(x-rx,y-ry,rx*2,ry*2);ctx.strokeStyle="#ffce95";ctx.setLineDash([8,5]);ctx.lineWidth=2;ctx.strokeRect(x-rx*.8,y-ry*.8,rx*1.6,ry*1.6);ctx.restore();}
+}
+function status(score,t){if(score<t-.08)return ["정상 후보","PASS",""];if(score<t+.08)return ["재검사 필요","REVIEW","review"];return ["불량 의심","SUSPECT","suspect"]}
+function render(){let t=Number($("threshold").value)/100,s=samples[selected];$("thresholdOut").textContent=t.toFixed(2);$("mThreshold").textContent=t.toFixed(2);$("mScore").textContent=uploaded?"—":s.score.toFixed(2);$("scoreFill").style.width=uploaded?"0%":(s.score*100)+"%";const st=uploaded?["분석 대기","NOT ANALYZED","review"]:status(s.score,t);$("gradeText").textContent=st[0];$("status").textContent=st[1];$("status").className="status "+st[2];$("type").textContent=uploaded?"판정 불가":s.label+" (예시)";$("coord").textContent=uploaded?"업로드한 이미지: 로컬 미리보기만 지원":selected==="normal"?"결함 영역 없음":`가상 결함 위치: X ${s.x} · Y ${s.y}`;$("previewLabel").textContent=uploaded?"Local preview · no AI":`Synthetic fabric · Sample ${Object.keys(samples).indexOf(selected)+1}`;$("sourceInfo").textContent=uploaded?"사용자 로컬 이미지":"합성 원단";$("tableRows").innerHTML=Object.entries(samples).map(([id,v],i)=>{const state=status(v.score,t);return `<tr><td>${String(i+1).padStart(2,"0")} · ${v.label}</td><td>${v.score.toFixed(2)}</td><td>${v.feature}</td><td>${state[0]}</td></tr>`}).join("");document.querySelectorAll(".option").forEach(b=>b.classList.toggle("selected",b.dataset.sample===selected&&!uploaded));drawFabric()}
+document.querySelectorAll(".option").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.sample;uploaded=null;$("upload").value="";$("message").textContent="";render()}));$("threshold").addEventListener("input",render);$("heat").addEventListener("click",()=>{showHeat=!showHeat;render()});$("upload").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;if(!f.type.startsWith("image/")){$("message").textContent="이미지 파일만 선택할 수 있습니다.";return;}const u=URL.createObjectURL(f);const im=new Image;im.onload=()=>{uploaded=im;URL.revokeObjectURL(u);$("message").textContent="업로드 이미지는 브라우저에서만 미리봅니다. 실제 AI 분석은 수행하지 않습니다.";render()};im.onerror=()=>{$("message").textContent="이미지를 불러올 수 없습니다.";URL.revokeObjectURL(u)};im.src=u});render();
+</script>
+</body></html>
